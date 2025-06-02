@@ -118,22 +118,24 @@ func (webpage *Webpage) PopulateWebpageInfo() error {
 		switch tt {
 		case html.ErrorToken:
 			return z.Err()
-		// case html.TextToken:
-		// 	fmt.Println(string(z.Text()))
 		case html.StartTagToken, html.EndTagToken:
 			tn, _ := z.TagName()
-			fmt.Println(string(tn))
 
 			for {
 				attribute, value, moreAttr := z.TagAttr()
-				fmt.Println(string(attribute), string(value))
 				if !moreAttr {
 					break
 				}
-
+				if string(tn) == "a" && string(attribute) == "href" {
+					href := string(value)
+					URL, err := ResolveHrefToURL(href, webpage.URL)
+					if err != nil {
+						break
+					}
+					webpage.LinkMeTo(URL)
+				}
 			}
 		}
-		// Process the current token.
 	}
 }
 
