@@ -118,7 +118,7 @@ func (webpage *Webpage) PopulateWebpageInfo() error {
 		switch tt {
 		case html.ErrorToken:
 			return z.Err()
-		case html.StartTagToken, html.EndTagToken:
+		case html.StartTagToken:
 			tn, _ := z.TagName()
 
 			for {
@@ -146,12 +146,10 @@ func (webpage *Webpage) LinkMeTo(URL string) {
 		if err != nil {
 			return
 		}
-		fmt.Println(webpage.URL, ">", wp.URL)
 		webpagesVisited[URL] = wp
 		wp.LinkMeFrom(webpage)
 		webpage.LinkedTo = append(webpage.LinkedTo, wp)
 	} else {
-		fmt.Println(webpage.URL, "already linked to", URL)
 		wp := webpagesVisited[URL]
 		alreadyLinkedTo := slices.Contains(webpage.LinkedTo, wp)
 
@@ -194,6 +192,5 @@ func ResolveHrefToURL(href string, currentURL string) (string, error) {
 	}
 
 	joined := base.ResolveReference(u).String()
-	fmt.Println(joined)
 	return joined, nil
 }
