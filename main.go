@@ -35,7 +35,7 @@ func main() {
 
 	for {
 		var input int
-		fmt.Println("On site:", wew.URL)
+		fmt.Println("On site:", wew.URL, "\""+wew.Title+"\"")
 		for _, v := range wew.LinkedFrom {
 			fmt.Println("Linked from:", v.URL)
 		}
@@ -80,6 +80,7 @@ type Webpage struct {
 	URL        string
 	Lang       string
 	HTML       string
+	Title      string
 	LinkedTo   []*Webpage
 	LinkedFrom []*Webpage
 }
@@ -119,20 +120,28 @@ func (webpage *Webpage) PopulateWebpageInfo() error {
 		case html.ErrorToken:
 			return z.Err()
 		case html.StartTagToken:
-			tn, _ := z.TagName()
+			tagName, _ := z.TagName()
 
-			for {
-				attribute, value, moreAttr := z.TagAttr()
-				if !moreAttr {
-					break
+			switch string(tagName) {
+			case "title":
+				if z.Next() == html.TextToken {
+					title := string(z.Text())
+					webpage.Title = title
 				}
-				if string(tn) == "a" && string(attribute) == "href" {
-					href := string(value)
-					URL, err := ResolveHrefToURL(href, webpage.URL)
-					if err != nil {
+			case "a":
+				for {
+					attribute, value, moreAttr := z.TagAttr()
+					if string(attribute) == "href" {
+						href := string(value)
+						URL, err := ResolveHrefToURL(href, webpage.URL)
+						if err != nil {
+							break
+						}
+						webpage.LinkMeTo(URL)
+					}
+					if !moreAttr {
 						break
 					}
-					webpage.LinkMeTo(URL)
 				}
 			}
 		}
