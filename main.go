@@ -22,8 +22,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	wew, err := NewWebpage("https://404notboring.com/articles/boids")
-	// wew, err := NewWebpage("https://en.wikipedia.org/wiki/Mud")
+	myURL, err := url.Parse("https://404notboring.com/articles/boids")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	wew, err := NewWebpage(myURL)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -77,7 +81,7 @@ func InitializeDB() (*sql.DB, error) {
 }
 
 type Webpage struct {
-	URL        string
+	URL        *url.URL
 	Lang       string
 	HTML       string
 	Title      string
@@ -85,27 +89,22 @@ type Webpage struct {
 	LinkedFrom []*Webpage
 }
 
-func NewWebpage(URL string) (*Webpage, error) {
-	URL, err := ResolveHrefToURL(URL, "")
-	if err != nil {
-		return nil, err
-	}
-
-	if webpagesVisited[URL] != nil {
+func NewWebpage(URL *url.URL) (*Webpage, error) {
+	if webpagesVisited[URL.String()] != nil {
 		return nil, errors.New("webpage already exists")
 	} else {
 		webpage := &Webpage{
 			URL: URL,
 		}
 
-		webpagesVisited[URL] = webpage
+		webpagesVisited[URL.String()] = webpage
 
 		return webpage, nil
 	}
 }
 
 func (webpage *Webpage) PopulateWebpageInfo() error {
-	resp, err := http.Get(webpage.URL)
+	resp, err := http.Get(webpage.URL.String())
 	if err != nil {
 		return err
 	}
@@ -133,7 +132,7 @@ func (webpage *Webpage) PopulateWebpageInfo() error {
 					attribute, value, moreAttr := z.TagAttr()
 					if string(attribute) == "href" {
 						href := string(value)
-						URL, err := ResolveHrefToURL(href, webpage.URL)
+						URL, err := ResolveHrefToURL(href, webpage.URL.String())
 						if err != nil {
 							break
 						}
@@ -148,18 +147,18 @@ func (webpage *Webpage) PopulateWebpageInfo() error {
 	}
 }
 
-func (webpage *Webpage) LinkMeTo(URL string) {
-	isNewURL := webpagesVisited[URL] == nil
+func (webpage *Webpage) LinkMeTo(URL *url.URL) {
+	isNewURL := webpagesVisited[URL.String()] == nil
 	if isNewURL {
 		wp, err := NewWebpage(URL)
 		if err != nil {
 			return
 		}
-		webpagesVisited[URL] = wp
+		webpagesVisited[URL.String()] = wp
 		wp.LinkMeFrom(webpage)
 		webpage.LinkedTo = append(webpage.LinkedTo, wp)
 	} else {
-		wp := webpagesVisited[URL]
+		wp := webpagesVisited[URL.String()]
 		alreadyLinkedTo := slices.Contains(webpage.LinkedTo, wp)
 
 		if !alreadyLinkedTo {
@@ -182,24 +181,24 @@ func (webpage *Webpage) Print() {
 	}
 }
 
-func ResolveHrefToURL(href string, currentURL string) (string, error) {
+func ResolveHrefToURL(href string, currentURL string) (*url.URL, error) {
 	u, err := url.Parse(href)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if currentURL == "" {
-		return u.String(), nil
+		return u, nil
 	}
 
 	base, err := url.Parse(currentURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if base.Scheme == "" {
-		return "", errors.New("no scheme on currentURL")
+		return nil, errors.New("no scheme on currentURL")
 	}
 
-	joined := base.ResolveReference(u).String()
+	joined := base.ResolveReference(u)
 	return joined, nil
 }
